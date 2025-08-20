@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Truck, 
   Factory, 
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const fleetMetrics = [
     {
       title: 'Active TARAL Units',
@@ -139,7 +141,10 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <p className="text-gray-500">Action</p>
-                    <button className="text-blue-600 hover:text-blue-800 font-medium">
+                    <button 
+                      onClick={() => navigate(`/monitoring/${unit.id}`)}
+                      className="text-blue-600 hover:text-blue-800 font-medium hover:underline cursor-pointer"
+                    >
                       Monitor →
                     </button>
                   </div>

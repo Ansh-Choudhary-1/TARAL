@@ -9,10 +9,10 @@ import FuelComparison from './components/fuel/FuelComparison';
 import OrderTracking from './components/orders/OrderTracking';
 import ESGReports from './components/reports/ESGReports';
 import FleetManagement from './components/fleet/FleetManagement';
+import MonitoringDashboard from './components/monitoring/MonitoringDashboard';
 import Login from './components/auth/Login';
 import { UserProvider, useUser } from './contexts/UserContext';
 import { MessageCircle } from 'lucide-react';
-import Chatbot from './components/chat/Chatbot';
 
 function AppContent() {
   const { user, logout } = useUser();
@@ -56,7 +56,11 @@ function AppContent() {
               <Route path="/orders" element={<OrderTracking />} />
               <Route path="/reports" element={<ESGReports />} />
               {user.type === 'admin' && (
-                <Route path="/fleet" element={<FleetManagement />} />
+                <>
+                  <Route path="/fleet" element={<FleetManagement />} />
+                  <Route path="/monitoring" element={<MonitoringDashboard />} />
+                  <Route path="/monitoring/:unitId" element={<MonitoringDashboard />} />
+                </>
               )}
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
