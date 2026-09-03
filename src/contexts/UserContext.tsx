@@ -8,8 +8,6 @@ export interface User {
   industry?: string;
   company?: string;
   email: string;
-  carbonCredits?: number;
-  cleanFuelStars?: number;
 }
 
 interface UserContextType {

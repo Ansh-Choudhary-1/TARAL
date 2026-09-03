@@ -27,8 +27,10 @@ import {
   type CreditTrade,
 } from '../lib/seedData';
 const TRACKING_LABELS = ['Order Placed', 'Production Started', 'Quality Check', 'Dispatched', 'Delivered'];
+// How many of the 5 timeline steps are complete at each status.
+// A freshly placed order sits at stage 1 ("Order Placed") only.
 const COMPLETED_BY_STATUS: Record<OrderStatus, number> = {
-  Processing: 2,
+  Processing: 1,
   'In Transit': 4,
   Delivered: 5,
   Cancelled: 0,
@@ -163,31 +165,38 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const deliveryDate = addDays(4);
       const match = products.find((p) => p.name === input.fuel || p.name.includes(input.fuel));
       const year = new Date().getFullYear();
-      const seq = orders.filter((o) => o.id.startsWith(`ORD-${year}-`)).length + 1;
 
-      const order: Order = {
-        id: `ORD-${year}-${String(seq).padStart(3, '0')}`,
-        fuel: input.fuel,
-        quantity,
-        supplier: input.supplier ?? match?.supplier ?? 'TARAL Unit TR-001',
-        location: input.location ?? match?.location ?? 'Pune Industrial Area',
-        status: 'Processing',
-        orderDate: today(),
-        deliveryDate,
-        unitPrice,
-        total: unitPrice * quantity,
-        buyerEmail: input.buyerEmail,
-        company: input.company,
-        trackingSteps: buildTrackingSteps('Processing', deliveryDate),
+      const build = (existing: Order[]): Order => {
+        const prefix = `ORD-${year}-`;
+        let n = existing.filter((o) => o.id.startsWith(prefix)).length + 1;
+        while (existing.some((o) => o.id === `${prefix}${String(n).padStart(3, '0')}`)) n += 1;
+        return {
+          id: `${prefix}${String(n).padStart(3, '0')}`,
+          fuel: input.fuel,
+          quantity,
+          supplier: input.supplier ?? match?.supplier ?? 'TARAL Unit TR-001',
+          location: input.location ?? match?.location ?? 'Pune Industrial Area',
+          status: 'Processing',
+          orderDate: today(),
+          deliveryDate,
+          unitPrice,
+          total: unitPrice * quantity,
+          buyerEmail: input.buyerEmail,
+          company: input.company,
+          trackingSteps: buildTrackingSteps('Processing', deliveryDate),
+        };
       };
 
-      setOrders((prev) => [order, ...prev]);
+      // Build once for the return value; the reducer rebuilds against the
+      // freshest list so two quick calls can't collide on an id.
+      const preview = build(orders);
+      setOrders((prev) => [build(prev), ...prev]);
       if (match) {
         setProducts((prev) =>
           prev.map((p) => (p.id === match.id ? { ...p, inStock: Math.max(0, p.inStock - quantity) } : p)),
         );
       }
-      return order;
+      return preview;
     },
     [orders, priceForFuel, products, setOrders, setProducts],
   );

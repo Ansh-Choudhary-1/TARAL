@@ -40,10 +40,8 @@ export default function Login() {
       name: formData.name.trim(),
       type: userType,
       email,
-      company: formData.company.trim() || 'Sample Company',
+      company: formData.company.trim() || undefined,
       industry: userType === 'msme' ? industry : undefined,
-      carbonCredits: userType === 'msme' ? 45000 : undefined,
-      cleanFuelStars: userType === 'msme' ? 12 : undefined,
     };
 
     if (!existing) {
@@ -123,9 +121,13 @@ export default function Login() {
             {/* Form fields */}
             <div className="space-y-4">
               <div>
+                <label htmlFor="login-name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Full name <span className="text-red-500">*</span>
+                </label>
                 <input
+                  id="login-name"
                   type="text"
-                  placeholder="Full Name"
+                  placeholder="e.g. Rajesh Kumar"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
@@ -137,9 +139,13 @@ export default function Login() {
                 )}
               </div>
               <div>
+                <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email <span className="text-red-500">*</span>
+                </label>
                 <input
+                  id="login-email"
                   type="email"
-                  placeholder="Email"
+                  placeholder="you@company.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
@@ -150,26 +156,31 @@ export default function Login() {
                   <p className="mt-1 text-xs text-red-600">{errors.email}</p>
                 )}
               </div>
-              <input
-                type="text"
-                placeholder="Company Name (optional)"
-                value={formData.company}
-                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              />
+              <div>
+                <label htmlFor="login-company" className="block text-sm font-medium text-gray-700 mb-1">
+                  Company name <span className="text-gray-400">(optional)</span>
+                </label>
+                <input
+                  id="login-company"
+                  type="text"
+                  placeholder="Your business"
+                  value={formData.company}
+                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
             </div>
 
             <button
               type="submit"
-              disabled={!isValid}
-              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 px-4 rounded-lg hover:from-green-700 hover:to-emerald-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 px-4 rounded-lg hover:from-green-700 hover:to-emerald-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 font-medium transition-all"
             >
               Enter {userType === 'msme' ? 'MSME' : 'Admin'} Portal
             </button>
           </form>
 
           <div className="mt-6 text-center text-xs text-gray-500">
-            Demo platform - returning with the same email restores your saved workspace
+            Local demo — no server. Sign in with the same email to restore your saved workspace.
           </div>
         </div>
       </div>

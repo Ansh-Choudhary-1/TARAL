@@ -44,10 +44,12 @@ export default function MonitoringDashboard() {
     if (unitId) setSelectedUnit(unitId);
   }, [unitId]);
 
-  const unit = useMemo(
-    () => monitoringUnits.find((u) => u.id === selectedUnit) ?? monitoringUnits[0],
+  const matchedUnit = useMemo(
+    () => monitoringUnits.find((u) => u.id === selectedUnit),
     [monitoringUnits, selectedUnit],
   );
+  const notFound = !!unitId && !matchedUnit;
+  const unit = matchedUnit ?? monitoringUnits[0];
 
   const [draft, setDraft] = useState<MonitoringControlSettings>(unit.controlSettings);
   const [live, setLive] = useState({
@@ -86,6 +88,35 @@ export default function MonitoringDashboard() {
   const updateDraft = <K extends keyof MonitoringControlSettings>(key: K, value: MonitoringControlSettings[K]) => {
     setDraft((prev) => ({ ...prev, [key]: value }));
   };
+
+  if (notFound) {
+    return (
+      <div className="max-w-lg mx-auto bg-white rounded-xl border border-gray-100 shadow-sm p-10 text-center">
+        <AlertTriangle className="h-10 w-10 text-yellow-500 mx-auto mb-3" />
+        <h1 className="text-xl font-bold text-gray-900 mb-1">Unit “{unitId}” not found</h1>
+        <p className="text-sm text-gray-600 mb-6">
+          No TARAL unit with that ID is registered. Pick one below.
+        </p>
+        <div className="flex flex-wrap justify-center gap-2">
+          {monitoringUnits.map((u) => (
+            <button
+              key={u.id}
+              onClick={() => handleUnitChange(u.id)}
+              className="px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              {u.id}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => navigate('/fleet')}
+          className="mt-6 text-sm font-medium text-blue-600 hover:text-blue-700"
+        >
+          ← Back to Fleet Management
+        </button>
+      </div>
+    );
+  }
 
   const applySettings = () => {
     updateMonitoringUnit(unit.id, {
@@ -385,8 +416,13 @@ export default function MonitoringDashboard() {
         </div>
 
         <div className="space-y-3">
+          {unit.logs.length === 0 && (
+            <p className="text-sm text-gray-500 py-4 text-center">
+              No activity logged for {unit.id} yet.
+            </p>
+          )}
           {unit.logs.map((log, index) => (
-            <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg">
+            <div key={`${log.timestamp}-${index}`} className="flex items-center p-3 bg-gray-50 rounded-lg">
               <Clock className="h-4 w-4 text-gray-400 mr-3" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-900">{log.event}</p>

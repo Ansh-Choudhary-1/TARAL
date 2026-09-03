@@ -62,7 +62,6 @@ export interface FuelData {
   disposalCost: number;
   moistureLevel: number;
   reliability: 'High' | 'Medium' | 'Low';
-  current?: boolean;
   recommended?: boolean;
 }
 
@@ -164,7 +163,7 @@ export const seedOrders: Order[] = [
     unitPrice: 2400,
     total: 12000,
     buyerEmail: SEED_OWNER,
-    company: 'Sample Company',
+    company: 'Demo MSME',
     trackingSteps: [
       { step: 'Order Placed', completed: true, date: '2025-01-10 09:30' },
       { step: 'Production Started', completed: true, date: '2025-01-10 14:00' },
@@ -185,7 +184,7 @@ export const seedOrders: Order[] = [
     unitPrice: 2200,
     total: 6600,
     buyerEmail: SEED_OWNER,
-    company: 'Sample Company',
+    company: 'Demo MSME',
     trackingSteps: [
       { step: 'Order Placed', completed: true, date: '2025-01-12 11:20' },
       { step: 'Production Started', completed: true, date: '2025-01-12 15:45' },
@@ -206,13 +205,34 @@ export const seedOrders: Order[] = [
     unitPrice: 2600,
     total: 5200,
     buyerEmail: SEED_OWNER,
-    company: 'Sample Company',
+    company: 'Demo MSME',
     trackingSteps: [
       { step: 'Order Placed', completed: true, date: '2025-01-14 10:15' },
-      { step: 'Production Started', completed: true, date: '2025-01-14 16:00' },
-      { step: 'Quality Check', completed: false, date: 'In Progress' },
+      { step: 'Production Started', completed: false, date: 'In Progress' },
+      { step: 'Quality Check', completed: false, date: 'Pending' },
       { step: 'Dispatched', completed: false, date: 'Pending' },
       { step: 'Delivered', completed: false, date: 'Expected: 2025-01-17' },
+    ],
+  },
+  {
+    id: 'ORD-2025-004',
+    fuel: 'Wood Chip Pellets',
+    quantity: 4,
+    supplier: 'TARAL Unit TR-005',
+    location: 'Nashik Hub',
+    status: 'Cancelled',
+    orderDate: '2025-01-15',
+    deliveryDate: '2025-01-19',
+    unitPrice: 2350,
+    total: 9400,
+    buyerEmail: SEED_OWNER,
+    company: 'Demo MSME',
+    trackingSteps: [
+      { step: 'Order Placed', completed: true, date: '2025-01-15 08:40' },
+      { step: 'Production Started', completed: false, date: 'Cancelled' },
+      { step: 'Quality Check', completed: false, date: 'Cancelled' },
+      { step: 'Dispatched', completed: false, date: 'Cancelled' },
+      { step: 'Delivered', completed: false, date: 'Cancelled' },
     ],
   },
 ];
@@ -303,7 +323,6 @@ export const seedFuelData: FuelData[] = [
     disposalCost: 150,
     moistureLevel: 8,
     reliability: 'High',
-    current: true,
   },
   {
     name: 'Diesel',
