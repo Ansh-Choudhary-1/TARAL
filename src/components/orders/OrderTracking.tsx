@@ -1,111 +1,80 @@
-import React, { useState } from 'react';
-import { 
-  Package, 
-  Truck, 
-  Clock, 
+import { useMemo, useState } from 'react';
+import {
+  Package,
+  Truck,
+  Clock,
   CheckCircle,
   AlertCircle,
+  XCircle,
   MapPin,
   Calendar,
-  Filter
+  Filter,
 } from 'lucide-react';
+import { useData } from '../../contexts/DataContext';
+import { useUser } from '../../contexts/UserContext';
+import { useToast } from '../common/Toast';
+import { SEED_OWNER, type Order, type OrderStatus } from '../../lib/seedData';
+
+const statusFilters = [
+  { value: 'all', label: 'All Orders' },
+  { value: 'processing', label: 'Processing' },
+  { value: 'in-transit', label: 'In Transit' },
+  { value: 'delivered', label: 'Delivered' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
+
+function getStatusColor(status: OrderStatus) {
+  switch (status) {
+    case 'Delivered':
+      return 'bg-green-100 text-green-800';
+    case 'In Transit':
+      return 'bg-blue-100 text-blue-800';
+    case 'Processing':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'Cancelled':
+      return 'bg-red-100 text-red-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+}
+
+function getStatusIcon(status: OrderStatus) {
+  switch (status) {
+    case 'Delivered':
+      return <CheckCircle className="h-5 w-5 text-green-600" />;
+    case 'In Transit':
+      return <Truck className="h-5 w-5 text-blue-600" />;
+    case 'Processing':
+      return <Clock className="h-5 w-5 text-yellow-600" />;
+    case 'Cancelled':
+      return <XCircle className="h-5 w-5 text-red-600" />;
+    default:
+      return <AlertCircle className="h-5 w-5 text-gray-600" />;
+  }
+}
 
 export default function OrderTracking() {
+  const { orders, setOrderStatus } = useData();
+  const { user } = useUser();
+  const { toast } = useToast();
   const [selectedStatus, setSelectedStatus] = useState('all');
 
-  const orders = [
-    {
-      id: 'ORD-2025-001',
-      fuel: 'Biomass Pellets',
-      quantity: '5 MT',
-      supplier: 'TARAL Unit TR-001',
-      location: 'Pune Industrial Area',
-      status: 'Delivered',
-      orderDate: '2025-01-10',
-      deliveryDate: '2025-01-12',
-      amount: 12000,
-      trackingSteps: [
-        { step: 'Order Placed', completed: true, date: '2025-01-10 09:30' },
-        { step: 'Production Started', completed: true, date: '2025-01-10 14:00' },
-        { step: 'Quality Check', completed: true, date: '2025-01-11 10:15' },
-        { step: 'Dispatched', completed: true, date: '2025-01-11 16:30' },
-        { step: 'Delivered', completed: true, date: '2025-01-12 11:45' }
-      ]
-    },
-    {
-      id: 'ORD-2025-002',
-      fuel: 'RDF Pellets',
-      quantity: '3 MT',
-      supplier: 'TARAL Unit TR-002',
-      location: 'Mumbai Port',
-      status: 'In Transit',
-      orderDate: '2025-01-12',
-      deliveryDate: '2025-01-15',
-      amount: 6600,
-      trackingSteps: [
-        { step: 'Order Placed', completed: true, date: '2025-01-12 11:20' },
-        { step: 'Production Started', completed: true, date: '2025-01-12 15:45' },
-        { step: 'Quality Check', completed: true, date: '2025-01-13 09:30' },
-        { step: 'Dispatched', completed: true, date: '2025-01-13 14:20' },
-        { step: 'Delivered', completed: false, date: 'Expected: 2025-01-15' }
-      ]
-    },
-    {
-      id: 'ORD-2025-003',
-      fuel: 'Briquettes',
-      quantity: '2 MT',
-      supplier: 'TARAL Unit TR-004',
-      location: 'Aurangabad Zone',
-      status: 'Processing',
-      orderDate: '2025-01-14',
-      deliveryDate: '2025-01-17',
-      amount: 5200,
-      trackingSteps: [
-        { step: 'Order Placed', completed: true, date: '2025-01-14 10:15' },
-        { step: 'Production Started', completed: true, date: '2025-01-14 16:00' },
-        { step: 'Quality Check', completed: false, date: 'In Progress' },
-        { step: 'Dispatched', completed: false, date: 'Pending' },
-        { step: 'Delivered', completed: false, date: 'Expected: 2025-01-17' }
-      ]
-    }
-  ];
+  const visibleOrders = useMemo(() => {
+    const scoped =
+      user?.type === 'admin'
+        ? orders
+        : orders.filter((o) => o.buyerEmail === user?.email || o.buyerEmail === SEED_OWNER);
+    return [...scoped].sort((a, b) => b.orderDate.localeCompare(a.orderDate));
+  }, [orders, user]);
 
-  const statusFilters = [
-    { value: 'all', label: 'All Orders' },
-    { value: 'processing', label: 'Processing' },
-    { value: 'in-transit', label: 'In Transit' },
-    { value: 'delivered', label: 'Delivered' }
-  ];
-
-  const filteredOrders = orders.filter(order => {
+  const filteredOrders = visibleOrders.filter((order) => {
     if (selectedStatus === 'all') return true;
     return order.status.toLowerCase().replace(' ', '-') === selectedStatus;
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Delivered':
-        return 'bg-green-100 text-green-800';
-      case 'In Transit':
-        return 'bg-blue-100 text-blue-800';
-      case 'Processing':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Delivered':
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
-      case 'In Transit':
-        return <Truck className="h-5 w-5 text-blue-600" />;
-      case 'Processing':
-        return <Clock className="h-5 w-5 text-yellow-600" />;
-      default:
-        return <AlertCircle className="h-5 w-5 text-gray-600" />;
-    }
+  const changeStatus = (order: Order, status: OrderStatus, label: string) => {
+    setOrderStatus(order.id, status);
+    toast(`${order.id} ${label}`);
   };
 
   return (
@@ -121,7 +90,7 @@ export default function OrderTracking() {
         <div className="flex items-center bg-blue-50 px-4 py-2 rounded-full mt-4 lg:mt-0">
           <Package className="h-5 w-5 text-blue-600 mr-2" />
           <span className="text-sm font-medium text-blue-800">
-            {orders.length} Active Orders
+            {visibleOrders.filter((o) => o.status !== 'Delivered' && o.status !== 'Cancelled').length} Active Orders
           </span>
         </div>
       </div>
@@ -135,7 +104,7 @@ export default function OrderTracking() {
             onChange={(e) => setSelectedStatus(e.target.value)}
             className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500"
           >
-            {statusFilters.map(filter => (
+            {statusFilters.map((filter) => (
               <option key={filter.value} value={filter.value}>
                 {filter.label}
               </option>
@@ -146,7 +115,12 @@ export default function OrderTracking() {
 
       {/* Orders List */}
       <div className="space-y-6">
-        {filteredOrders.map(order => (
+        {filteredOrders.length === 0 && (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-10 text-center text-gray-500">
+            No orders match this filter yet.
+          </div>
+        )}
+        {filteredOrders.map((order) => (
           <div key={order.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             {/* Order Header */}
             <div className="p-6 border-b border-gray-200">
@@ -155,19 +129,19 @@ export default function OrderTracking() {
                   {getStatusIcon(order.status)}
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">{order.id}</h3>
-                    <p className="text-gray-600">{order.fuel} • {order.quantity}</p>
+                    <p className="text-gray-600">{order.fuel} • {order.quantity} MT</p>
                   </div>
                   <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(order.status)}`}>
                     {order.status}
                   </span>
                 </div>
-                
+
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-gray-900">₹{order.amount.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-gray-900">₹{order.total.toLocaleString()}</p>
                   <p className="text-sm text-gray-500">Total Amount</p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 <div className="flex items-center text-gray-600">
                   <MapPin className="h-4 w-4 mr-2" />
@@ -182,6 +156,33 @@ export default function OrderTracking() {
                   <span className="text-sm">Expected: {order.deliveryDate}</span>
                 </div>
               </div>
+
+              {(order.status === 'Processing' || order.status === 'In Transit') && (
+                <div className="flex flex-wrap gap-3 mt-5">
+                  {order.status === 'Processing' && (
+                    <button
+                      onClick={() => changeStatus(order, 'In Transit', 'marked in transit')}
+                      className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Mark In Transit
+                    </button>
+                  )}
+                  {order.status === 'In Transit' && (
+                    <button
+                      onClick={() => changeStatus(order, 'Delivered', 'marked as received')}
+                      className="px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Mark as Received
+                    </button>
+                  )}
+                  <button
+                    onClick={() => changeStatus(order, 'Cancelled', 'cancelled')}
+                    className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel Order
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Tracking Timeline */}
@@ -193,8 +194,8 @@ export default function OrderTracking() {
                   {order.trackingSteps.map((step, index) => (
                     <div key={index} className="relative flex items-center">
                       <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center ${
-                        step.completed 
-                          ? 'bg-green-600 text-white' 
+                        step.completed
+                          ? 'bg-green-600 text-white'
                           : 'bg-gray-200 text-gray-500'
                       }`}>
                         {step.completed ? (
@@ -226,30 +227,35 @@ export default function OrderTracking() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{visibleOrders.length}</p>
             </div>
             <Package className="h-8 w-8 text-blue-600" />
           </div>
         </div>
-        
+
         <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Quantity</p>
               <p className="text-2xl font-bold text-gray-900">
-                {orders.reduce((sum, order) => sum + parseInt(order.quantity), 0)} MT
+                {visibleOrders
+                  .filter((o) => o.status !== 'Cancelled')
+                  .reduce((sum, order) => sum + order.quantity, 0)} MT
               </p>
             </div>
             <Truck className="h-8 w-8 text-green-600" />
           </div>
         </div>
-        
+
         <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Value</p>
               <p className="text-2xl font-bold text-gray-900">
-                ₹{orders.reduce((sum, order) => sum + order.amount, 0).toLocaleString()}
+                ₹{visibleOrders
+                  .filter((o) => o.status !== 'Cancelled')
+                  .reduce((sum, order) => sum + order.total, 0)
+                  .toLocaleString()}
               </p>
             </div>
             <CheckCircle className="h-8 w-8 text-purple-600" />

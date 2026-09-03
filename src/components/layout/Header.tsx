@@ -1,5 +1,6 @@
-import React from 'react';
-import { Bell, Menu, User, LogOut, Award } from 'lucide-react';
+import { Bell, Menu, User, LogOut, Award, RotateCcw } from 'lucide-react';
+import { useData } from '../../contexts/DataContext';
+import { useToast } from '../common/Toast';
 
 interface HeaderProps {
   user: {
@@ -13,6 +14,14 @@ interface HeaderProps {
 }
 
 export default function Header({ user, onLogout, onMenuClick }: HeaderProps) {
+  const { resetDemoData } = useData();
+  const { toast } = useToast();
+
+  const handleReset = () => {
+    resetDemoData();
+    toast('Demo data reset to its original state', 'info');
+  };
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 right-0 left-0 z-50">
       <div className="px-4 sm:px-6 lg:px-8">
@@ -73,8 +82,15 @@ export default function Header({ user, onLogout, onMenuClick }: HeaderProps) {
                   <User className="h-5 w-5" />
                 </button>
                 
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                <div className="absolute right-0 mt-2 w-52 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
                   <div className="py-1">
+                    <button
+                      onClick={handleReset}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Reset Demo Data
+                    </button>
                     <button
                       onClick={onLogout}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

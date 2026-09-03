@@ -1,138 +1,109 @@
-import React, { useState } from 'react';
-import { 
-  Truck, 
-  MapPin, 
-  Zap, 
+import { useMemo, useState } from 'react';
+import {
+  Truck,
+  MapPin,
+  Zap,
   AlertTriangle,
   Settings,
   TrendingUp,
   Gauge,
   Thermometer,
   Activity,
-  Users
+  Users,
 } from 'lucide-react';
+import { useData } from '../../contexts/DataContext';
+import { useToast } from '../common/Toast';
+import type { FleetUnit } from '../../lib/seedData';
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case 'Active':
+      return 'bg-green-100 text-green-800';
+    case 'Maintenance':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'Offline':
+      return 'bg-red-100 text-red-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+}
+
+function getProductionColor(production: number) {
+  if (production >= 90) return 'text-green-600';
+  if (production >= 70) return 'text-yellow-600';
+  return 'text-red-600';
+}
 
 export default function FleetManagement() {
-  const [selectedUnit, setSelectedUnit] = useState('TR-001');
+  const { fleetUnits, updateFleetUnit } = useData();
+  const { toast } = useToast();
+  const [selectedUnit, setSelectedUnit] = useState(fleetUnits[0]?.id ?? 'TR-001');
 
-  const taralUnits = [
-    {
-      id: 'TR-001',
-      location: 'Pune Industrial Area',
-      status: 'Active',
-      production: 95,
-      temperature: 850,
-      pressure: 2.4,
-      feedstock: 'Agricultural Waste',
-      output: '12.5 MT/day',
-      efficiency: 92,
-      lastMaintenance: '2025-01-05',
-      nextMaintenance: '2025-02-05',
-      coordinates: { lat: 18.5204, lng: 73.8567 },
-      activeOrders: 8,
-      operator: 'Rajesh Patil'
-    },
-    {
-      id: 'TR-002',
-      location: 'Mumbai Port',
-      status: 'Active',
-      production: 87,
-      temperature: 820,
-      pressure: 2.2,
-      feedstock: 'Wood Chips',
-      output: '10.8 MT/day',
-      efficiency: 89,
-      lastMaintenance: '2025-01-08',
-      nextMaintenance: '2025-02-08',
-      coordinates: { lat: 19.0760, lng: 72.8777 },
-      activeOrders: 6,
-      operator: 'Priya Sharma'
-    },
-    {
-      id: 'TR-003',
-      location: 'Nashik Hub',
-      status: 'Maintenance',
-      production: 0,
-      temperature: 25,
-      pressure: 0,
-      feedstock: 'N/A',
-      output: '0 MT/day',
-      efficiency: 0,
-      lastMaintenance: '2025-01-14',
-      nextMaintenance: '2025-01-16',
-      coordinates: { lat: 19.9975, lng: 73.7898 },
-      activeOrders: 0,
-      operator: 'Amit Kumar'
-    },
-    {
-      id: 'TR-004',
-      location: 'Aurangabad Zone',
-      status: 'Active',
-      production: 78,
-      temperature: 780,
-      pressure: 2.0,
-      feedstock: 'Rice Husk',
-      output: '9.2 MT/day',
-      efficiency: 85,
-      lastMaintenance: '2025-01-02',
-      nextMaintenance: '2025-02-02',
-      coordinates: { lat: 19.8762, lng: 75.3433 },
-      activeOrders: 12,
-      operator: 'Sunita Desai'
-    }
-  ];
+  const selectedUnitData = fleetUnits.find((unit) => unit.id === selectedUnit) ?? fleetUnits[0];
 
-  const selectedUnitData = taralUnits.find(unit => unit.id === selectedUnit);
+  const fleetMetrics = useMemo(() => {
+    const active = fleetUnits.filter((u) => u.status === 'Active').length;
+    const totalProduction = Math.round(fleetUnits.reduce((s, u) => s + u.outputPerDay, 0) * 10) / 10;
+    const runningUnits = fleetUnits.filter((u) => u.efficiency > 0);
+    const avgEfficiency = runningUnits.length
+      ? Math.round((runningUnits.reduce((s, u) => s + u.efficiency, 0) / runningUnits.length) * 10) / 10
+      : 0;
+    const activeOrders = fleetUnits.reduce((s, u) => s + u.activeOrders, 0);
+    return [
+      {
+        title: 'Total Production Today',
+        value: `${totalProduction} MT`,
+        change: '+8%',
+        icon: TrendingUp,
+        color: 'text-green-600 bg-green-50',
+      },
+      {
+        title: 'Active Units',
+        value: `${active}/${fleetUnits.length}`,
+        change: `${fleetUnits.length ? Math.round((active / fleetUnits.length) * 100) : 0}%`,
+        icon: Truck,
+        color: 'text-blue-600 bg-blue-50',
+      },
+      {
+        title: 'Average Efficiency',
+        value: `${avgEfficiency}%`,
+        change: '+2%',
+        icon: Gauge,
+        color: 'text-purple-600 bg-purple-50',
+      },
+      {
+        title: 'Active Orders',
+        value: `${activeOrders}`,
+        change: '+15%',
+        icon: Activity,
+        color: 'text-orange-600 bg-orange-50',
+      },
+    ];
+  }, [fleetUnits]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Active':
-        return 'bg-green-100 text-green-800';
-      case 'Maintenance':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Offline':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  const toggleUnitStatus = (unit: FleetUnit) => {
+    if (unit.status === 'Active') {
+      updateFleetUnit(unit.id, {
+        status: 'Maintenance',
+        production: 0,
+        temperature: 25,
+        pressure: 0,
+        efficiency: 0,
+        outputPerDay: 0,
+      });
+      toast(`${unit.id} paused for maintenance`, 'info');
+    } else {
+      updateFleetUnit(unit.id, {
+        status: 'Active',
+        production: 85,
+        temperature: 820,
+        pressure: 2.2,
+        efficiency: 88,
+        outputPerDay: 10,
+      });
+      toast(`${unit.id} brought back online`);
     }
   };
-
-  const getProductionColor = (production: number) => {
-    if (production >= 90) return 'text-green-600';
-    if (production >= 70) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const fleetMetrics = [
-    {
-      title: 'Total Production Today',
-      value: '32.5 MT',
-      change: '+8%',
-      icon: TrendingUp,
-      color: 'text-green-600 bg-green-50'
-    },
-    {
-      title: 'Active Units',
-      value: '3/4',
-      change: '75%',
-      icon: Truck,
-      color: 'text-blue-600 bg-blue-50'
-    },
-    {
-      title: 'Average Efficiency',
-      value: '88.7%',
-      change: '+2%',
-      icon: Gauge,
-      color: 'text-purple-600 bg-purple-50'
-    },
-    {
-      title: 'Active Orders',
-      value: '26',
-      change: '+15%',
-      icon: Activity,
-      color: 'text-orange-600 bg-orange-50'
-    }
-  ];
 
   return (
     <div className="space-y-6">
@@ -181,11 +152,11 @@ export default function FleetManagement() {
               <span className="text-sm text-gray-600">Live monitoring</span>
             </div>
           </div>
-          
+
           <div className="space-y-4">
-            {taralUnits.map((unit) => (
-              <div 
-                key={unit.id} 
+            {fleetUnits.map((unit) => (
+              <div
+                key={unit.id}
                 className={`border rounded-lg p-4 cursor-pointer transition-all ${
                   selectedUnit === unit.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
                 }`}
@@ -203,7 +174,7 @@ export default function FleetManagement() {
                     <span className="text-sm">{unit.location}</span>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-4 gap-4 text-sm">
                   <div>
                     <p className="text-gray-500">Production</p>
@@ -213,7 +184,7 @@ export default function FleetManagement() {
                   </div>
                   <div>
                     <p className="text-gray-500">Output</p>
-                    <p className="font-medium text-gray-900">{unit.output}</p>
+                    <p className="font-medium text-gray-900">{unit.outputPerDay} MT/day</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Orders</p>
@@ -235,7 +206,7 @@ export default function FleetManagement() {
             <h2 className="text-lg font-semibold text-gray-900">Unit Details</h2>
             <Settings className="h-5 w-5 text-gray-400" />
           </div>
-          
+
           {selectedUnitData && (
             <div className="space-y-4">
               <div className="text-center pb-4 border-b border-gray-200">
@@ -294,8 +265,15 @@ export default function FleetManagement() {
               </div>
 
               <div className="pt-4">
-                <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                  Remote Control Panel
+                <button
+                  onClick={() => toggleUnitStatus(selectedUnitData)}
+                  className={`w-full py-2 px-4 rounded-lg text-white font-medium transition-colors ${
+                    selectedUnitData.status === 'Active'
+                      ? 'bg-yellow-600 hover:bg-yellow-700'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  {selectedUnitData.status === 'Active' ? 'Pause for Maintenance' : 'Bring Unit Online'}
                 </button>
               </div>
             </div>
