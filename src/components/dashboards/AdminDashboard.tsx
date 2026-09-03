@@ -1,60 +1,68 @@
-import React from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Truck, 
-  Factory, 
-  Leaf, 
+import {
+  Truck,
+  Factory,
+  Leaf,
   TrendingUp,
   MapPin,
   Zap,
   Users,
-  Package
+  Package,
 } from 'lucide-react';
+import { useData } from '../../contexts/DataContext';
+import { computeEsg } from '../../lib/esg';
+
+const regionalDemand = [
+  { region: 'Western Maharashtra', demand: 'High', growth: '+18%', units: 8 },
+  { region: 'Mumbai Metropolitan', demand: 'Medium', growth: '+12%', units: 6 },
+  { region: 'Pune Belt', demand: 'High', growth: '+25%', units: 10 },
+];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { fleetUnits, orders } = useData();
+
+  const stats = useMemo(() => {
+    const activeUnits = fleetUnits.filter((u) => u.status === 'Active').length;
+    const totalProduction = fleetUnits.reduce((sum, u) => sum + u.outputPerDay, 0);
+    const activeOrders = fleetUnits.reduce((sum, u) => sum + u.activeOrders, 0);
+    const esg = computeEsg(orders);
+    const revenue = orders
+      .filter((o) => o.status !== 'Cancelled')
+      .reduce((sum, o) => sum + o.total, 0);
+    return { activeUnits, totalProduction, activeOrders, esg, revenue };
+  }, [fleetUnits, orders]);
+
   const fleetMetrics = [
     {
       title: 'Active TARAL Units',
-      value: '24',
-      change: '+2',
+      value: `${stats.activeUnits}/${fleetUnits.length}`,
+      change: `${stats.activeOrders} orders`,
       icon: Truck,
-      color: 'text-blue-600 bg-blue-50'
+      color: 'text-blue-600 bg-blue-50',
     },
     {
       title: 'Total Production',
-      value: '1,250 MT',
+      value: `${Math.round(stats.totalProduction * 10) / 10} MT/day`,
       change: '+8%',
       icon: Factory,
-      color: 'text-green-600 bg-green-50'
+      color: 'text-green-600 bg-green-50',
     },
     {
-      title: 'CO₂ Savings (Monthly)',
-      value: '2,840 Tons',
-      change: '+15%',
+      title: 'CO₂ Savings (Total)',
+      value: `${stats.esg.co2ReducedTons} Tons`,
+      change: `${stats.esg.ordersCount} orders`,
       icon: Leaf,
-      color: 'text-emerald-600 bg-emerald-50'
+      color: 'text-emerald-600 bg-emerald-50',
     },
     {
       title: 'Revenue',
-      value: '₹85.2L',
+      value: `₹${stats.revenue.toLocaleString()}`,
       change: '+22%',
       icon: TrendingUp,
-      color: 'text-indigo-600 bg-indigo-50'
-    }
-  ];
-
-  const taralUnits = [
-    { id: 'TR-001', location: 'Pune Industrial Area', status: 'Active', production: '95%', orders: 12 },
-    { id: 'TR-002', location: 'Mumbai Port', status: 'Active', production: '87%', orders: 8 },
-    { id: 'TR-003', location: 'Nashik Hub', status: 'Maintenance', production: '0%', orders: 0 },
-    { id: 'TR-004', location: 'Aurangabad Zone', status: 'Active', production: '78%', orders: 15 }
-  ];
-
-  const regionalDemand = [
-    { region: 'Western Maharashtra', demand: 'High', growth: '+18%', units: 8 },
-    { region: 'Mumbai Metropolitan', demand: 'Medium', growth: '+12%', units: 6 },
-    { region: 'Pune Belt', demand: 'High', growth: '+25%', units: 10 }
+      color: 'text-indigo-600 bg-indigo-50',
+    },
   ];
 
   return (
@@ -104,9 +112,9 @@ export default function AdminDashboard() {
               <span className="text-sm text-gray-600">Real-time monitoring</span>
             </div>
           </div>
-          
+
           <div className="space-y-4">
-            {taralUnits.map((unit) => (
+            {fleetUnits.map((unit) => (
               <div key={unit.id} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center">
@@ -124,24 +132,24 @@ export default function AdminDashboard() {
                     <span className="text-sm">{unit.location}</span>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
                     <p className="text-gray-500">Production Capacity</p>
                     <p className={`font-medium ${
-                      parseInt(unit.production) > 80 ? 'text-green-600' :
-                      parseInt(unit.production) > 50 ? 'text-yellow-600' : 'text-red-600'
+                      unit.production > 80 ? 'text-green-600' :
+                      unit.production > 50 ? 'text-yellow-600' : 'text-red-600'
                     }`}>
-                      {unit.production}
+                      {unit.production}%
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-500">Active Orders</p>
-                    <p className="font-medium text-gray-900">{unit.orders}</p>
+                    <p className="font-medium text-gray-900">{unit.activeOrders}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Action</p>
-                    <button 
+                    <button
                       onClick={() => navigate(`/monitoring/${unit.id}`)}
                       className="text-blue-600 hover:text-blue-800 font-medium hover:underline cursor-pointer"
                     >
@@ -160,7 +168,7 @@ export default function AdminDashboard() {
             <h2 className="text-lg font-semibold text-gray-900">Regional Demand</h2>
             <TrendingUp className="h-5 w-5 text-gray-400" />
           </div>
-          
+
           <div className="space-y-4">
             {regionalDemand.map((region) => (
               <div key={region.region} className="border-l-4 border-blue-400 pl-4 py-2">
@@ -186,26 +194,35 @@ export default function AdminDashboard() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-xl p-6">
+        <button
+          onClick={() => navigate('/reports')}
+          className="text-left bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-xl p-6 hover:from-blue-700 hover:to-blue-800 transition-colors"
+        >
           <Users className="h-8 w-8 mb-4 opacity-80" />
           <h3 className="text-lg font-semibold mb-2">Active MSMEs</h3>
           <p className="text-3xl font-bold mb-1">1,247</p>
           <p className="text-blue-200 text-sm">+89 this month</p>
-        </div>
-        
-        <div className="bg-gradient-to-br from-green-600 to-green-700 text-white rounded-xl p-6">
+        </button>
+
+        <button
+          onClick={() => navigate('/orders')}
+          className="text-left bg-gradient-to-br from-green-600 to-green-700 text-white rounded-xl p-6 hover:from-green-700 hover:to-green-800 transition-colors"
+        >
           <Package className="h-8 w-8 mb-4 opacity-80" />
           <h3 className="text-lg font-semibold mb-2">Orders Today</h3>
-          <p className="text-3xl font-bold mb-1">156</p>
-          <p className="text-green-200 text-sm">2,340 MT total</p>
-        </div>
-        
-        <div className="bg-gradient-to-br from-purple-600 to-purple-700 text-white rounded-xl p-6">
+          <p className="text-3xl font-bold mb-1">{stats.esg.ordersCount}</p>
+          <p className="text-green-200 text-sm">{stats.esg.totalQuantity} MT total</p>
+        </button>
+
+        <button
+          onClick={() => navigate('/reports')}
+          className="text-left bg-gradient-to-br from-purple-600 to-purple-700 text-white rounded-xl p-6 hover:from-purple-700 hover:to-purple-800 transition-colors"
+        >
           <Leaf className="h-8 w-8 mb-4 opacity-80" />
           <h3 className="text-lg font-semibold mb-2">Carbon Offset</h3>
-          <p className="text-3xl font-bold mb-1">45.2K</p>
-          <p className="text-purple-200 text-sm">tons CO₂ this year</p>
-        </div>
+          <p className="text-3xl font-bold mb-1">{stats.esg.co2ReducedTons}</p>
+          <p className="text-purple-200 text-sm">tons CO₂ tracked</p>
+        </button>
       </div>
 
       {/* System Alerts */}
