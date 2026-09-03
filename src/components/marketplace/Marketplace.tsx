@@ -38,11 +38,22 @@ export default function Marketplace() {
   const [sortBy, setSortBy] = useState('price');
   const [modal, setModal] = useState<ModalState>(null);
   const [quantity, setQuantity] = useState(5);
+  const [placing, setPlacing] = useState(false);
   const [inquiry, setInquiry] = useState({ name: '', company: '', message: '' });
+  const [inquiryError, setInquiryError] = useState('');
   const [lastQuote, setLastQuote] = useState<{ total: number; delivery: string } | null>(null);
 
   const buyerEmail = user?.email ?? '';
-  const company = user?.company ?? 'Sample Company';
+  const company = user?.company ?? '';
+
+  const network = useMemo(() => {
+    const totalStock = products.reduce((s, p) => s + p.inStock, 0);
+    const avgRating = products.length
+      ? products.reduce((s, p) => s + p.rating, 0) / products.length
+      : 0;
+    const suppliers = new Set(products.map((p) => p.supplier)).size;
+    return { totalStock, avgRating, suppliers };
+  }, [products]);
 
   const sortedProducts = useMemo(() => {
     const filtered = products.filter((product) =>
@@ -75,11 +86,12 @@ export default function Marketplace() {
 
   const openInquiry = (title: string) => {
     setInquiry({ name: user?.name ?? '', company, message: '' });
+    setInquiryError('');
     setModal({ kind: 'inquiry', title });
   };
 
   const confirmOrder = () => {
-    if (modal?.kind !== 'order') return;
+    if (placing || modal?.kind !== 'order') return;
     const product = modal.product;
     if (quantity < 1) {
       toast('Enter a quantity of at least 1 MT', 'error');
@@ -89,6 +101,7 @@ export default function Marketplace() {
       toast(`Only ${product.inStock} MT of ${product.name} in stock`, 'error');
       return;
     }
+    setPlacing(true);
     const order = addOrder({
       fuel: product.name,
       quantity,
@@ -99,17 +112,22 @@ export default function Marketplace() {
       location: product.location,
     });
     setModal(null);
+    setPlacing(false);
     toast(`Order ${order.id} placed for ${quantity} MT of ${product.name}`);
     navigate('/orders');
   };
 
   const generateQuote = () => {
     if (modal?.kind !== 'quote') return;
+    if (quantity < 1) {
+      toast('Enter a quantity of at least 1 MT', 'error');
+      return;
+    }
     const product = modal.product;
-    const total = product.price * Math.max(1, quantity);
+    const total = product.price * quantity;
     addQuote({
       product: product.name,
-      quantity: Math.max(1, quantity),
+      quantity,
       unitPrice: product.price,
       total,
       estimatedDelivery: product.delivery,
@@ -120,7 +138,7 @@ export default function Marketplace() {
 
   const submitInquiry = () => {
     if (!inquiry.name.trim() || !inquiry.message.trim()) {
-      toast('Please add your name and a short message', 'error');
+      setInquiryError('Please add your name and a short message.');
       return;
     }
     addInquiry({ name: inquiry.name.trim(), company: inquiry.company.trim(), message: inquiry.message.trim() });
@@ -141,7 +159,7 @@ export default function Marketplace() {
         <div className="flex items-center bg-green-50 px-4 py-2 rounded-full mt-4 lg:mt-0">
           <TrendingUp className="h-5 w-5 text-green-600 mr-2" />
           <span className="text-sm font-medium text-green-800">
-            Live pricing • Updated every hour
+            {products.length} products • {network.totalStock.toLocaleString()} MT in stock
           </span>
         </div>
       </div>
@@ -151,7 +169,9 @@ export default function Marketplace() {
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="flex items-center space-x-4">
             <Filter className="h-5 w-5 text-gray-400" />
+            <label htmlFor="mk-filter" className="sr-only">Filter products</label>
             <select
+              id="mk-filter"
               value={selectedFilter}
               onChange={(e) => setSelectedFilter(e.target.value)}
               className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500"
@@ -180,13 +200,27 @@ export default function Marketplace() {
       </div>
 
       {/* Product Grid */}
+      {sortedProducts.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-12 text-center">
+          <Package className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-600 font-medium">No products match this filter</p>
+          <button
+            onClick={() => setSelectedFilter('all')}
+            className="mt-3 text-sm font-medium text-green-600 hover:text-green-700"
+          >
+            Show all products
+          </button>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {sortedProducts.map((product) => (
           <div key={product.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="relative">
+            <div className="relative bg-gray-100">
               <img
                 src={product.image}
                 alt={product.name}
+                loading="lazy"
+                onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
                 className="w-full h-48 object-cover"
               />
               <div className="absolute top-4 right-4">
@@ -266,14 +300,15 @@ export default function Marketplace() {
           </div>
         ))}
       </div>
+      )}
 
       {/* Quick Order Panel */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white">
         <div className="flex flex-col lg:flex-row items-center justify-between">
           <div className="mb-4 lg:mb-0">
-            <h2 className="text-xl font-semibold mb-2">Need Bulk Orders?</h2>
+            <h2 className="text-xl font-semibold mb-2">Need bulk orders?</h2>
             <p className="text-blue-100">
-              Get customized pricing and priority delivery for orders above 50 MT
+              Contact the sales team for custom pricing and priority delivery on large orders.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
@@ -293,30 +328,32 @@ export default function Marketplace() {
         </div>
       </div>
 
-      {/* Supplier Information */}
+      {/* Network summary (derived from the catalogue) */}
       <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">About Our TARAL Network</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Marketplace at a Glance</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
             <div className="bg-green-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
               <Truck className="h-6 w-6 text-green-600" />
             </div>
-            <h3 className="font-medium text-gray-900 mb-1">24 Active Units</h3>
-            <p className="text-sm text-gray-600">Mobile production units across Maharashtra</p>
+            <h3 className="font-medium text-gray-900 mb-1">{network.suppliers} supplying units</h3>
+            <p className="text-sm text-gray-600">Listing on the marketplace right now</p>
           </div>
           <div className="text-center">
             <div className="bg-blue-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
               <Package className="h-6 w-6 text-blue-600" />
             </div>
-            <h3 className="font-medium text-gray-900 mb-1">1,250 MT/Month</h3>
-            <p className="text-sm text-gray-600">Total production capacity</p>
+            <h3 className="font-medium text-gray-900 mb-1">{network.totalStock.toLocaleString()} MT available</h3>
+            <p className="text-sm text-gray-600">Across {products.length} products</p>
           </div>
           <div className="text-center">
             <div className="bg-purple-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
               <Star className="h-6 w-6 text-purple-600" />
             </div>
-            <h3 className="font-medium text-gray-900 mb-1">4.7/5 Rating</h3>
-            <p className="text-sm text-gray-600">Average customer satisfaction</p>
+            <h3 className="font-medium text-gray-900 mb-1">
+              {network.avgRating.toLocaleString(undefined, { maximumFractionDigits: 1 })} / 5 avg rating
+            </h3>
+            <p className="text-sm text-gray-600">Weighted across all listings</p>
           </div>
         </div>
       </div>
@@ -334,13 +371,14 @@ export default function Marketplace() {
               <span className="font-medium">₹{modal.product.price.toLocaleString()} {modal.product.unit}</span>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Quantity (MT)</label>
+              <label htmlFor="mk-order-qty" className="block text-sm font-medium text-gray-700 mb-1">Quantity (MT)</label>
               <input
+                id="mk-order-qty"
                 type="number"
                 min={1}
                 max={modal.product.inStock}
                 value={quantity}
-                onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
+                onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
               />
               <p className="mt-1 text-xs text-gray-500">{modal.product.inStock} MT available</p>
@@ -353,9 +391,10 @@ export default function Marketplace() {
             </div>
             <button
               onClick={confirmOrder}
-              className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
+              disabled={placing}
+              className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Confirm Order
+              {placing ? 'Placing…' : 'Confirm Order'}
             </button>
           </div>
         )}
@@ -370,12 +409,13 @@ export default function Marketplace() {
         {modal?.kind === 'quote' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Desired quantity (MT)</label>
+              <label htmlFor="mk-quote-qty" className="block text-sm font-medium text-gray-700 mb-1">Desired quantity (MT)</label>
               <input
+                id="mk-quote-qty"
                 type="number"
                 min={1}
                 value={quantity}
-                onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
+                onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
               />
             </div>
@@ -409,27 +449,42 @@ export default function Marketplace() {
         onClose={() => setModal(null)}
       >
         <div className="space-y-4">
-          <input
-            type="text"
-            placeholder="Your name"
-            value={inquiry.name}
-            onChange={(e) => setInquiry({ ...inquiry, name: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-          <input
-            type="text"
-            placeholder="Company"
-            value={inquiry.company}
-            onChange={(e) => setInquiry({ ...inquiry, company: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-          <textarea
-            placeholder="How can our team help?"
-            rows={4}
-            value={inquiry.message}
-            onChange={(e) => setInquiry({ ...inquiry, message: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
+          <div>
+            <label htmlFor="mk-inq-name" className="block text-sm font-medium text-gray-700 mb-1">
+              Your name <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="mk-inq-name"
+              type="text"
+              value={inquiry.name}
+              onChange={(e) => { setInquiry({ ...inquiry, name: e.target.value }); setInquiryError(''); }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label htmlFor="mk-inq-company" className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+            <input
+              id="mk-inq-company"
+              type="text"
+              value={inquiry.company}
+              onChange={(e) => setInquiry({ ...inquiry, company: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label htmlFor="mk-inq-msg" className="block text-sm font-medium text-gray-700 mb-1">
+              Message <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              id="mk-inq-msg"
+              placeholder="How can our team help?"
+              rows={4}
+              value={inquiry.message}
+              onChange={(e) => { setInquiry({ ...inquiry, message: e.target.value }); setInquiryError(''); }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          {inquiryError && <p className="text-xs text-red-600">{inquiryError}</p>}
           <button
             onClick={submitInquiry}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"

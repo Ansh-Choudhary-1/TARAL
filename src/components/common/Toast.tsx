@@ -41,7 +41,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const toast = useCallback(
     (message: string, type: ToastType = 'success') => {
       const id = nextId.current++;
-      setToasts((prev) => [...prev, { id, message, type }]);
+      // Keep at most the 3 most recent toasts so they never pile up.
+      setToasts((prev) => [...prev, { id, message, type }].slice(-3));
       window.setTimeout(() => dismiss(id), 4000);
     },
     [dismiss],
@@ -59,7 +60,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div
               key={t.id}
               className={`flex items-start gap-3 rounded-lg border p-4 shadow-lg ${s.wrap}`}
-              role="status"
+              role={t.type === 'error' ? 'alert' : 'status'}
             >
               {s.icon}
               <p className="text-sm font-medium flex-1">{t.message}</p>

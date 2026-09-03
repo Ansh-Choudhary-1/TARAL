@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Package,
   Truck,
@@ -57,6 +58,7 @@ export default function OrderTracking() {
   const { orders, setOrderStatus } = useData();
   const { user } = useUser();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [selectedStatus, setSelectedStatus] = useState('all');
 
   const visibleOrders = useMemo(() => {
@@ -67,14 +69,33 @@ export default function OrderTracking() {
     return [...scoped].sort((a, b) => b.orderDate.localeCompare(a.orderDate));
   }, [orders, user]);
 
-  const filteredOrders = visibleOrders.filter((order) => {
-    if (selectedStatus === 'all') return true;
-    return order.status.toLowerCase().replace(' ', '-') === selectedStatus;
-  });
+  const filteredOrders = useMemo(
+    () =>
+      visibleOrders.filter((order) => {
+        if (selectedStatus === 'all') return true;
+        return order.status.toLowerCase().replace(' ', '-') === selectedStatus;
+      }),
+    [visibleOrders, selectedStatus],
+  );
 
-  const changeStatus = (order: Order, status: OrderStatus, label: string) => {
+  const summary = useMemo(() => {
+    const live = visibleOrders.filter((o) => o.status !== 'Cancelled');
+    return {
+      total: visibleOrders.length,
+      active: visibleOrders.filter((o) => o.status === 'Processing' || o.status === 'In Transit').length,
+      quantity: live.reduce((s, o) => s + o.quantity, 0),
+      value: live.reduce((s, o) => s + o.total, 0),
+    };
+  }, [visibleOrders]);
+
+  const changeStatus = (order: Order, status: OrderStatus) => {
     setOrderStatus(order.id, status);
-    toast(`${order.id} ${label}`);
+    toast(
+      status === 'Cancelled'
+        ? `Order ${order.id} cancelled`
+        : `Order ${order.id} is now ${status}`,
+      status === 'Cancelled' ? 'info' : 'success',
+    );
   };
 
   return (
@@ -90,7 +111,7 @@ export default function OrderTracking() {
         <div className="flex items-center bg-blue-50 px-4 py-2 rounded-full mt-4 lg:mt-0">
           <Package className="h-5 w-5 text-blue-600 mr-2" />
           <span className="text-sm font-medium text-blue-800">
-            {visibleOrders.filter((o) => o.status !== 'Delivered' && o.status !== 'Cancelled').length} Active Orders
+            {summary.active} active {summary.active === 1 ? 'order' : 'orders'}
           </span>
         </div>
       </div>
@@ -99,7 +120,9 @@ export default function OrderTracking() {
       <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
         <div className="flex items-center space-x-4">
           <Filter className="h-5 w-5 text-gray-400" />
+          <label htmlFor="ot-status" className="sr-only">Filter by status</label>
           <select
+            id="ot-status"
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
             className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500"
@@ -116,8 +139,29 @@ export default function OrderTracking() {
       {/* Orders List */}
       <div className="space-y-6">
         {filteredOrders.length === 0 && (
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-10 text-center text-gray-500">
-            No orders match this filter yet.
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-12 text-center">
+            <Package className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+            {visibleOrders.length === 0 ? (
+              <>
+                <p className="text-gray-600 font-medium">No orders yet</p>
+                <button
+                  onClick={() => navigate('/marketplace')}
+                  className="mt-3 text-sm font-medium text-green-600 hover:text-green-700"
+                >
+                  Place your first order →
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-gray-600 font-medium">No {selectedStatus.replace('-', ' ')} orders</p>
+                <button
+                  onClick={() => setSelectedStatus('all')}
+                  className="mt-3 text-sm font-medium text-green-600 hover:text-green-700"
+                >
+                  Show all orders
+                </button>
+              </>
+            )}
           </div>
         )}
         {filteredOrders.map((order) => (
@@ -161,7 +205,7 @@ export default function OrderTracking() {
                 <div className="flex flex-wrap gap-3 mt-5">
                   {order.status === 'Processing' && (
                     <button
-                      onClick={() => changeStatus(order, 'In Transit', 'marked in transit')}
+                      onClick={() => changeStatus(order, 'In Transit')}
                       className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       Mark In Transit
@@ -169,14 +213,14 @@ export default function OrderTracking() {
                   )}
                   {order.status === 'In Transit' && (
                     <button
-                      onClick={() => changeStatus(order, 'Delivered', 'marked as received')}
+                      onClick={() => changeStatus(order, 'Delivered')}
                       className="px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                     >
                       Mark as Received
                     </button>
                   )}
                   <button
-                    onClick={() => changeStatus(order, 'Cancelled', 'cancelled')}
+                    onClick={() => changeStatus(order, 'Cancelled')}
                     className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     Cancel Order
@@ -191,8 +235,8 @@ export default function OrderTracking() {
               <div className="relative">
                 <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
                 <div className="space-y-4">
-                  {order.trackingSteps.map((step, index) => (
-                    <div key={index} className="relative flex items-center">
+                  {order.trackingSteps.map((step) => (
+                    <div key={step.step} className="relative flex items-center">
                       <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center ${
                         step.completed
                           ? 'bg-green-600 text-white'
@@ -227,7 +271,7 @@ export default function OrderTracking() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold text-gray-900">{visibleOrders.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{summary.total}</p>
             </div>
             <Package className="h-8 w-8 text-blue-600" />
           </div>
@@ -237,11 +281,7 @@ export default function OrderTracking() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Quantity</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {visibleOrders
-                  .filter((o) => o.status !== 'Cancelled')
-                  .reduce((sum, order) => sum + order.quantity, 0)} MT
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{summary.quantity.toLocaleString()} MT</p>
             </div>
             <Truck className="h-8 w-8 text-green-600" />
           </div>
@@ -251,12 +291,7 @@ export default function OrderTracking() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Value</p>
-              <p className="text-2xl font-bold text-gray-900">
-                ₹{visibleOrders
-                  .filter((o) => o.status !== 'Cancelled')
-                  .reduce((sum, order) => sum + order.total, 0)
-                  .toLocaleString()}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">₹{summary.value.toLocaleString()}</p>
             </div>
             <CheckCircle className="h-8 w-8 text-purple-600" />
           </div>
