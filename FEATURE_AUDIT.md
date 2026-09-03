@@ -1,5 +1,14 @@
 # TARAL — Feature Audit (What Works, What's Faked)
 
+> **Note (superseded in part):** this audit was taken at commit `b3932c1`. A
+> follow-up pass has since removed the chatbot, replaced every fabricated
+> stat/alert/trend with a data-derived value, fixed the double-submit order
+> duplication, added a "unit not found" state for bad `/monitoring/:unitId`,
+> clamped numeric inputs, added real empty states, and made the modal
+> keyboard-dismissible. Items below marked ⚠️/❌ for those reasons are now
+> mostly resolved; treat this file as the historical baseline. See the README's
+> "Known limitations" for the current gap list.
+
 Evidence-based, read-only verification pass. Every item was traced to the responsible
 component/handler and checked for real Context + `localStorage` reads/writes vs. hardcoded
 data or CSS-only "clickable" elements.

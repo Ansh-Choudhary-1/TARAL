@@ -31,8 +31,8 @@ export default function Sidebar({ userType, isOpen, onClose }: SidebarProps) {
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: Truck, label: 'Fleet Management', path: '/fleet' },
     { icon: ShoppingCart, label: 'Marketplace', path: '/marketplace' },
-    { icon: Package, label: 'Orders', path: '/orders' },
-    { icon: TrendingUp, label: 'Analytics', path: '/reports' },
+    { icon: Package, label: 'Order Tracking', path: '/orders' },
+    { icon: TrendingUp, label: 'ESG Reports', path: '/reports' },
   ];
 
   const menuItems = userType === 'msme' ? msmeMenuItems : adminMenuItems;
@@ -57,13 +57,14 @@ export default function Sidebar({ userType, isOpen, onClose }: SidebarProps) {
           <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
           <button
             onClick={onClose}
+            aria-label="Close menu"
             className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-lg"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <nav className="flex-1 pt-16 lg:pt-20">
+        <nav className="flex-1 pt-4 lg:pt-20">
           <div className="px-3 py-4">
             <ul className="space-y-1">
               {menuItems.map((item) => {

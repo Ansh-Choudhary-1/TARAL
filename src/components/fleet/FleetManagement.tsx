@@ -41,6 +41,12 @@ export default function FleetManagement() {
 
   const selectedUnitData = fleetUnits.find((unit) => unit.id === selectedUnit) ?? fleetUnits[0];
 
+  const downUnits = useMemo(() => fleetUnits.filter((u) => u.status !== 'Active'), [fleetUnits]);
+  const topUnit = useMemo(
+    () => fleetUnits.filter((u) => u.status === 'Active').sort((a, b) => b.efficiency - a.efficiency)[0],
+    [fleetUnits],
+  );
+
   const fleetMetrics = useMemo(() => {
     const active = fleetUnits.filter((u) => u.status === 'Active').length;
     const totalProduction = Math.round(fleetUnits.reduce((s, u) => s + u.outputPerDay, 0) * 10) / 10;
@@ -51,30 +57,30 @@ export default function FleetManagement() {
     const activeOrders = fleetUnits.reduce((s, u) => s + u.activeOrders, 0);
     return [
       {
-        title: 'Total Production Today',
+        title: 'Daily Production Capacity',
         value: `${totalProduction} MT`,
-        change: '+8%',
+        sub: `${active} unit${active === 1 ? '' : 's'} producing`,
         icon: TrendingUp,
         color: 'text-green-600 bg-green-50',
       },
       {
         title: 'Active Units',
         value: `${active}/${fleetUnits.length}`,
-        change: `${fleetUnits.length ? Math.round((active / fleetUnits.length) * 100) : 0}%`,
+        sub: `${fleetUnits.length ? Math.round((active / fleetUnits.length) * 100) : 0}% of fleet`,
         icon: Truck,
         color: 'text-blue-600 bg-blue-50',
       },
       {
         title: 'Average Efficiency',
         value: `${avgEfficiency}%`,
-        change: '+2%',
+        sub: `${runningUnits.length} unit${runningUnits.length === 1 ? '' : 's'} online`,
         icon: Gauge,
         color: 'text-purple-600 bg-purple-50',
       },
       {
         title: 'Active Orders',
         value: `${activeOrders}`,
-        change: '+15%',
+        sub: 'assigned across fleet',
         icon: Activity,
         color: 'text-orange-600 bg-orange-50',
       },
@@ -116,9 +122,17 @@ export default function FleetManagement() {
           </p>
         </div>
         <div className="flex items-center space-x-4 mt-4 lg:mt-0">
-          <div className="flex items-center bg-green-50 px-3 py-1 rounded-full">
-            <div className="h-2 w-2 bg-green-500 rounded-full mr-2"></div>
-            <span className="text-sm text-green-800">All Systems Operational</span>
+          <div className={`flex items-center px-3 py-1 rounded-full ${
+            downUnits.length === 0 ? 'bg-green-50' : 'bg-yellow-50'
+          }`}>
+            <div className={`h-2 w-2 rounded-full mr-2 ${
+              downUnits.length === 0 ? 'bg-green-500' : 'bg-yellow-500'
+            }`}></div>
+            <span className={`text-sm ${downUnits.length === 0 ? 'text-green-800' : 'text-yellow-800'}`}>
+              {downUnits.length === 0
+                ? 'All systems operational'
+                : `${downUnits.length} unit${downUnits.length > 1 ? 's' : ''} need attention`}
+            </span>
           </div>
         </div>
       </div>
@@ -133,7 +147,7 @@ export default function FleetManagement() {
                 <div className={`p-3 rounded-lg ${metric.color}`}>
                   <Icon className="h-6 w-6" />
                 </div>
-                <span className="text-green-600 text-sm font-medium">{metric.change}</span>
+                <span className="text-gray-400 text-xs font-medium text-right">{metric.sub}</span>
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-1">{metric.value}</h3>
               <p className="text-gray-600 text-sm">{metric.title}</p>
@@ -281,31 +295,41 @@ export default function FleetManagement() {
         </div>
       </div>
 
-      {/* Alerts & Notifications */}
+      {/* Alerts & Notifications (derived from fleet state) */}
       <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">System Alerts</h2>
         <div className="space-y-3">
-          <div className="flex items-center p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 mr-3" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-yellow-800">TR-003 scheduled for maintenance</p>
-              <p className="text-xs text-yellow-600">Maintenance window: Tomorrow 2:00 AM - 6:00 AM</p>
+          {downUnits.map((unit) => (
+            <div key={unit.id} className="flex items-center p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 mr-3" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-yellow-800">{unit.id} is {unit.status.toLowerCase()}</p>
+                <p className="text-xs text-yellow-600">
+                  {unit.location} • next maintenance {unit.nextMaintenance}
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <Zap className="h-5 w-5 text-blue-600 mr-3" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-blue-800">TR-001 operating at peak efficiency</p>
-              <p className="text-xs text-blue-600">95% production capacity achieved</p>
+          ))}
+          {topUnit && (
+            <div className="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <Zap className="h-5 w-5 text-blue-600 mr-3" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-blue-800">
+                  {topUnit.id} leads the fleet at {topUnit.efficiency}% efficiency
+                </p>
+                <p className="text-xs text-blue-600">{topUnit.production}% production capacity</p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
-            <TrendingUp className="h-5 w-5 text-green-600 mr-3" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-green-800">Fleet performance improved by 8%</p>
-              <p className="text-xs text-green-600">Compared to last month's average</p>
+          )}
+          {downUnits.length === 0 && (
+            <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
+              <TrendingUp className="h-5 w-5 text-green-600 mr-3" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-green-800">Every unit is active</p>
+                <p className="text-xs text-green-600">No maintenance or downtime flagged</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

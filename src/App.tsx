@@ -14,7 +14,6 @@ import Login from './components/auth/Login';
 import { UserProvider, useUser } from './contexts/UserContext';
 import { DataProvider } from './contexts/DataContext';
 import { ToastProvider } from './components/common/Toast';
-import { MessageCircle } from 'lucide-react';
 
 function AppContent() {
   const { user, logout } = useUser();
@@ -39,7 +38,7 @@ function AppContent() {
           onClose={() => setSidebarOpen(false)}
         />
         
-        <main className="flex-1 lg:ml-64">
+        <main className="flex-1 min-w-0">
           <div className="p-6">
             <Routes>
               <Route 
@@ -63,22 +62,6 @@ function AppContent() {
             </Routes>
           </div>
         </main>
-      </div>
-
-      {/* Floating Chatbot at Bottom Left */}
-      <div className="fixed bottom-6 left-6 z-50">
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="flex items-center mb-2">
-            <MessageCircle className="h-5 w-5 text-blue-600 mr-2" />
-            <span className="text-sm font-medium text-blue-900">Ask TARAL</span>
-          </div>
-          <p className="text-xs text-blue-700 mb-3">
-            Get instant help with fuel switching and cost benefits
-          </p>
-          <button className="w-full bg-blue-600 text-white text-xs py-2 px-3 rounded-md hover:bg-blue-700 transition-colors">
-            Start Chat
-          </button>
-        </div>
       </div>
     </div>
   );
