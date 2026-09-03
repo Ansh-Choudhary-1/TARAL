@@ -1,99 +1,38 @@
-import React, { useState } from 'react';
-import { 
-  BarChart3, 
-  Leaf, 
-  DollarSign, 
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  BarChart3,
+  Leaf,
+  DollarSign,
   Flame,
   AlertTriangle,
   CheckCircle,
-  Calculator
+  Calculator,
 } from 'lucide-react';
+import { useData } from '../../contexts/DataContext';
+import { useUser } from '../../contexts/UserContext';
+import { useToast } from '../common/Toast';
+import type { FuelData } from '../../lib/seedData';
+
+const industries = [
+  { value: 'textiles', label: 'Textiles' },
+  { value: 'pharmaceutical', label: 'Pharmaceutical' },
+  { value: 'food-processing', label: 'Food Processing' },
+  { value: 'chemicals', label: 'Chemicals' },
+  { value: 'paper-pulp', label: 'Paper & Pulp' },
+];
 
 export default function FuelComparison() {
-  const [selectedIndustry, setSelectedIndustry] = useState('textiles');
+  const navigate = useNavigate();
+  const { fuelData, addOrder } = useData();
+  const { user } = useUser();
+  const { toast } = useToast();
+
+  const [selectedIndustry, setSelectedIndustry] = useState(user?.industry ?? 'textiles');
   const [currentFuel, setCurrentFuel] = useState('coal');
   const [monthlyConsumption, setMonthlyConsumption] = useState(100);
 
-  const industries = [
-    { value: 'textiles', label: 'Textiles' },
-    { value: 'pharmaceutical', label: 'Pharmaceutical' },
-    { value: 'food-processing', label: 'Food Processing' },
-    { value: 'chemicals', label: 'Chemicals' },
-    { value: 'paper-pulp', label: 'Paper & Pulp' }
-  ];
-
-  const fuelData = [
-    {
-      name: 'Coal',
-      costPerGCal: 2800,
-      co2Emission: 94.6,
-      sox: 1.2,
-      nox: 0.8,
-      ashContent: 25,
-      disposalCost: 150,
-      moistureLevel: 8,
-      reliability: 'High',
-      current: true
-    },
-    {
-      name: 'Diesel',
-      costPerGCal: 7200,
-      co2Emission: 74.1,
-      sox: 0.5,
-      nox: 1.5,
-      ashContent: 0,
-      disposalCost: 0,
-      moistureLevel: 0,
-      reliability: 'High'
-    },
-    {
-      name: 'Biomass Pellets',
-      costPerGCal: 2400,
-      co2Emission: 0,
-      sox: 0.02,
-      nox: 0.15,
-      ashContent: 2,
-      disposalCost: 20,
-      moistureLevel: 8,
-      reliability: 'High',
-      recommended: true
-    },
-    {
-      name: 'Briquettes',
-      costPerGCal: 2600,
-      co2Emission: 0,
-      sox: 0.03,
-      nox: 0.18,
-      ashContent: 4,
-      disposalCost: 30,
-      moistureLevel: 12,
-      reliability: 'Medium'
-    },
-    {
-      name: 'RDF Pellets',
-      costPerGCal: 2200,
-      co2Emission: 15.2,
-      sox: 0.8,
-      nox: 0.6,
-      ashContent: 15,
-      disposalCost: 100,
-      moistureLevel: 15,
-      reliability: 'Medium'
-    },
-    {
-      name: 'Natural Gas',
-      costPerGCal: 3200,
-      co2Emission: 56.1,
-      sox: 0,
-      nox: 0.3,
-      ashContent: 0,
-      disposalCost: 0,
-      moistureLevel: 0,
-      reliability: 'High'
-    }
-  ];
-
-  const calculateSavings = (newFuel: any, currentFuelData: any) => {
+  const calculateSavings = (newFuel: FuelData, currentFuelData: FuelData) => {
     const currentCost = currentFuelData.costPerGCal * monthlyConsumption;
     const newCost = newFuel.costPerGCal * monthlyConsumption;
     const monthlySavings = currentCost - newCost;
@@ -102,7 +41,18 @@ export default function FuelComparison() {
     return { monthlySavings, annualSavings, co2Reduction };
   };
 
-  const currentFuelData = fuelData.find(fuel => fuel.name.toLowerCase().includes(currentFuel));
+  const currentFuelData = fuelData.find((fuel) => fuel.name.toLowerCase().includes(currentFuel));
+
+  const orderFuel = (fuel: FuelData) => {
+    const order = addOrder({
+      fuel: fuel.name,
+      quantity: monthlyConsumption,
+      buyerEmail: user?.email ?? '',
+      company: user?.company ?? 'Sample Company',
+    });
+    toast(`Order ${order.id} placed for ${monthlyConsumption} MT of ${fuel.name}`);
+    navigate('/orders');
+  };
 
   return (
     <div className="space-y-6">
@@ -354,7 +304,10 @@ export default function FuelComparison() {
                     </div>
                   </div>
                   
-                  <button className="w-full mt-4 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                  <button
+                    onClick={() => orderFuel(fuel)}
+                    className="w-full mt-4 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  >
                     Order {fuel.name} Now
                   </button>
                 </div>

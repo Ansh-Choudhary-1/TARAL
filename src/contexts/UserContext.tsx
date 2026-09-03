@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, ReactNode } from 'react';
+import { get, set, remove, STORAGE_KEYS } from '../lib/storage';
 
-interface User {
+export interface User {
   id: string;
   name: string;
   type: 'msme' | 'admin';
@@ -21,62 +22,40 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    // Initialize user state from localStorage on component mount
-    const savedUser = localStorage.getItem('user');
-    console.log('Initializing user state from localStorage:', savedUser);
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
+  const [user, setUser] = useState<User | null>(() => get<User | null>(STORAGE_KEYS.user, null));
 
-  const login = (userData: User) => {
-    console.log('Logging in user:', userData);
+  const login = useCallback((userData: User) => {
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
-  };
-
-  const logout = () => {
-    console.log('Logging out user');
-    setUser(null);
-    localStorage.removeItem('user');
-  };
-
-  const updateUser = (updates: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-    }
-  };
-
-  // Restore user data from localStorage on component mount
-  useEffect(() => {
-    console.log('UserProvider useEffect running, checking localStorage...');
-    const savedUser = localStorage.getItem('user');
-    console.log('Found saved user in localStorage:', savedUser);
-    
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        console.log('Successfully parsed user data:', parsedUser);
-        setUser(parsedUser);
-      } catch (error) {
-        console.error('Error parsing saved user data:', error);
-        localStorage.removeItem('user');
-      }
-    } else {
-      console.log('No saved user found in localStorage');
-    }
+    set(STORAGE_KEYS.user, userData);
   }, []);
 
-  console.log('Current user state:', user);
+  const logout = useCallback(() => {
+    // Intentionally only clears the session key. Orders, marketplace stock,
+    // fleet and monitoring data stay in localStorage so they persist across
+    // logins for the account that created them.
+    setUser(null);
+    remove(STORAGE_KEYS.user);
+  }, []);
 
-  return (
-    <UserContext.Provider value={{ user, login, logout, updateUser }}>
-      {children}
-    </UserContext.Provider>
-  );
+  const updateUser = useCallback((updates: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...updates };
+      set(STORAGE_KEYS.user, next);
+      // Keep the account registry in sync so the profile survives re-login.
+      const accounts = get<Record<string, User>>(STORAGE_KEYS.accounts, {});
+      accounts[next.email] = next;
+      set(STORAGE_KEYS.accounts, accounts);
+      return next;
+    });
+  }, []);
+
+  const value = useMemo(() => ({ user, login, logout, updateUser }), [user, login, logout, updateUser]);
+
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useUser() {
   const context = useContext(UserContext);
   if (context === undefined) {

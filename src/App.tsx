@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/layout/Header';
 import Sidebar from './components/layout/Sidebar';
@@ -12,20 +12,17 @@ import FleetManagement from './components/fleet/FleetManagement';
 import MonitoringDashboard from './components/monitoring/MonitoringDashboard';
 import Login from './components/auth/Login';
 import { UserProvider, useUser } from './contexts/UserContext';
+import { DataProvider } from './contexts/DataContext';
+import { ToastProvider } from './components/common/Toast';
 import { MessageCircle } from 'lucide-react';
 
 function AppContent() {
   const { user, logout } = useUser();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  console.log('AppContent rendering, user:', user);
-
   if (!user) {
-    console.log('No user found, showing Login component');
     return <Login />;
   }
-
-  console.log('User found, rendering main app with user type:', user.type);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -90,9 +87,13 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <UserProvider>
-        <AppContent />
-      </UserProvider>
+      <ToastProvider>
+        <UserProvider>
+          <DataProvider>
+            <AppContent />
+          </DataProvider>
+        </UserProvider>
+      </ToastProvider>
     </Router>
   );
 }
